@@ -154,9 +154,10 @@ private fun EditTaskSuccessContent(
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(horizontal = SectionPadding),
                 )
-                TagSelector(selectedTag) { tag ->
-                    selectedTag = tag
-                }
+                TagSelector(
+                    onTagSelected = { selectedTag = it },
+                    selectedTag = selectedTag
+                )
                 Text(
                     text = TodometerResources.strings.dateTime.addStyledOptionalSuffix(),
                     color = MaterialTheme.colorScheme.primary,

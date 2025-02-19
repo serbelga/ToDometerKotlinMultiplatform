@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,19 +45,27 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.sergiobelda.navigation.compose.extended.annotation.NavDestination
+import dev.sergiobelda.todometer.app.common.designsystem.components.TodometerDivider
 import dev.sergiobelda.todometer.app.common.designsystem.components.TodometerTitledTextField
 import dev.sergiobelda.todometer.app.common.designsystem.theme.Alpha.applyMediumEmphasisAlpha
 import dev.sergiobelda.todometer.app.common.ui.actions.SystemBackHandler
+import dev.sergiobelda.todometer.app.common.ui.components.AddChecklistItemField
 import dev.sergiobelda.todometer.app.common.ui.components.DatePickerDialog
+import dev.sergiobelda.todometer.app.common.ui.components.DateTimeSelector
 import dev.sergiobelda.todometer.app.common.ui.components.SaveActionTopAppBar
+import dev.sergiobelda.todometer.app.common.ui.components.TagSelector
 import dev.sergiobelda.todometer.app.common.ui.components.TimePickerDialog
+import dev.sergiobelda.todometer.app.common.ui.extensions.addStyledOptionalSuffix
 import dev.sergiobelda.todometer.app.common.ui.values.SectionPadding
 import dev.sergiobelda.todometer.app.common.ui.values.TextFieldPadding
 import dev.sergiobelda.todometer.app.feature.addtask.navigation.AddTaskNavigationEvent
 import dev.sergiobelda.todometer.common.designsystem.resources.images.Images
 import dev.sergiobelda.todometer.common.designsystem.resources.images.icons.Close
+import dev.sergiobelda.todometer.common.domain.model.Tag
 import dev.sergiobelda.todometer.common.resources.TodometerResources
 import dev.sergiobelda.todometer.common.ui.base.BaseUI
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toPersistentList
 
 @OptIn(ExperimentalMaterial3Api::class)
 data object AddTaskScreen : BaseUI<AddTaskUIState, AddTaskContentState>() {
@@ -105,7 +114,8 @@ data object AddTaskScreen : BaseUI<AddTaskUIState, AddTaskContentState>() {
                     navigateBack = onBack,
                     isSaveButtonEnabled = !uiState.isAddingTask,
                     onSaveButtonClick = {
-                        /*if (taskTitle.isBlank()) {
+                        /*
+                        if (taskTitle.isBlank()) {
                             taskTitleInputError = true
                         } else {
                             viewModel.insertTask(
@@ -116,7 +126,9 @@ data object AddTaskScreen : BaseUI<AddTaskUIState, AddTaskContentState>() {
                                 taskChecklistItems,
                             )
                             navigateBack()
-                        }*/
+                        }
+                        */
+
                     },
                 )
             },
@@ -124,6 +136,11 @@ data object AddTaskScreen : BaseUI<AddTaskUIState, AddTaskContentState>() {
                 AddTaskContent(
                     showProgress = uiState.isAddingTask,
                     taskTitle = contentState.taskTitle,
+                    taskTitleInputError = contentState.taskTitleInputError,
+                    selectedTag = contentState.selectedTag,
+                    taskDueDate = contentState.taskDueDate,
+                    taskChecklistItems = contentState.taskChecklistItems.toPersistentList(),
+                    taskDescription = contentState.taskDescription,
                     modifier = Modifier
                         .padding(paddingValues),
                 )
@@ -176,6 +193,11 @@ data object AddTaskScreen : BaseUI<AddTaskUIState, AddTaskContentState>() {
     private fun AddTaskContent(
         showProgress: Boolean,
         taskTitle: String,
+        taskTitleInputError: Boolean,
+        selectedTag: Tag,
+        taskDueDate: Long?,
+        taskChecklistItems: ImmutableList<String>,
+        taskDescription: String,
         modifier: Modifier,
     ) {
         Column(
@@ -189,11 +211,9 @@ data object AddTaskScreen : BaseUI<AddTaskUIState, AddTaskContentState>() {
                     TodometerTitledTextField(
                         title = TodometerResources.strings.name,
                         value = taskTitle,
-                        onValueChange = {
-                            onEvent(AddTaskEvent.TaskTitleValueChange(it))
-                        },
+                        onValueChange = { onEvent(AddTaskEvent.TaskTitleValueChange(it)) },
                         placeholder = { Text(TodometerResources.strings.enterTaskName) },
-                        // isError = taskTitleInputError,
+                        isError = taskTitleInputError,
                         errorMessage = TodometerResources.strings.fieldNotEmpty,
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Sentences,
@@ -202,20 +222,21 @@ data object AddTaskScreen : BaseUI<AddTaskUIState, AddTaskContentState>() {
                         modifier = Modifier.padding(TextFieldPadding),
                     )
                 }
-                /*item {
+                item {
                     FieldTitle(text = TodometerResources.strings.chooseTag)
-                    TagSelector(selectedTag) { tag ->
-                        selectedTag = tag
-                    }
+                    TagSelector(
+                        onTagSelected = { onEvent(AddTaskEvent.OnTagSelected(it)) },
+                        selectedTag
+                    )
                 }
                 item {
                     FieldTitle(text = TodometerResources.strings.dateTime.addStyledOptionalSuffix())
                     DateTimeSelector(
                         taskDueDate,
-                        onEnterDateTimeClick = { datePickerDialogState = true },
-                        onDateClick = { datePickerDialogState = true },
-                        onTimeClick = { timePickerDialogState = true },
-                        onClearDateTimeClick = { taskDueDate = null },
+                        onEnterDateTimeClick = { onEvent(AddTaskEvent.OnShowDatePickerDialog) },
+                        onDateClick = { onEvent(AddTaskEvent.OnShowDatePickerDialog) },
+                        onTimeClick = { onEvent(AddTaskEvent.OnShowTimePickerDialog) },
+                        onClearDateTimeClick = { onEvent(AddTaskEvent.ClearDateTime) },
                     )
                 }
                 item {
@@ -232,21 +253,24 @@ data object AddTaskScreen : BaseUI<AddTaskUIState, AddTaskContentState>() {
                 }
                 itemsIndexed(taskChecklistItems) { index, item ->
                     TaskChecklistItem(
-                        item,
-                        onDeleteTaskCheckListItem = { taskChecklistItems.removeAt(index) },
+                        onDeleteTaskCheckListItem = {
+                            onEvent(AddTaskEvent.OnDeleteTaskCheckListItem(index))
+                        },
+                        taskChecklistItem = item,
                     )
                 }
                 item {
                     AddChecklistItemField(
-                        placeholder = { Text(TodometerResources.strings.addElementOptional) },
-                        onAddTaskCheckListItem = { taskChecklistItems.add(it) },
-                    )
+                        onAddTaskCheckListItem = { onEvent(AddTaskEvent.OnAddTaskCheckListItem(it)) },
+                    ) {
+                        Text(TodometerResources.strings.addElementOptional)
+                    }
                 }
                 item {
                     TodometerTitledTextField(
                         title = TodometerResources.strings.description.addStyledOptionalSuffix(),
                         value = taskDescription,
-                        onValueChange = { taskDescription = it },
+                        onValueChange = { onEvent(AddTaskEvent.TaskDescriptionValueChange(it)) },
                         placeholder = { Text(TodometerResources.strings.enterDescription) },
                         keyboardOptions = KeyboardOptions(
                             capitalization = KeyboardCapitalization.Sentences,
@@ -258,7 +282,7 @@ data object AddTaskScreen : BaseUI<AddTaskUIState, AddTaskContentState>() {
                 }
                 item {
                     TodometerDivider()
-                }*/
+                }
             }
         }
     }
@@ -288,8 +312,8 @@ private fun FieldTitle(
 
 @Composable
 private fun TaskChecklistItem(
-    taskChecklistItem: String,
     onDeleteTaskCheckListItem: () -> Unit,
+    taskChecklistItem: String,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,

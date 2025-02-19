@@ -19,7 +19,6 @@ package dev.sergiobelda.todometer.app.feature.taskdetails.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -255,9 +254,10 @@ private fun LazyListScope.taskChecklist(
     }
     item {
         AddChecklistItemField(
-            placeholder = { Text(TodometerResources.strings.addElement) },
             onAddTaskCheckListItem = onAddTaskCheckListItem,
-        )
+        ) {
+            Text(TodometerResources.strings.addElement)
+        }
     }
     item {
         TodometerDivider()
@@ -265,7 +265,6 @@ private fun LazyListScope.taskChecklist(
 }
 
 @Composable
-@OptIn(ExperimentalFoundationApi::class)
 private fun LazyItemScope.TaskChecklistItem(
     taskChecklistItem: TaskChecklistItem,
     onTaskChecklistItemClick: (String, Boolean) -> Unit,

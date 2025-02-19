@@ -16,17 +16,27 @@
 
 package dev.sergiobelda.todometer.app.feature.addtask.ui
 
+import dev.sergiobelda.todometer.common.domain.model.Tag
 import dev.sergiobelda.todometer.common.ui.base.BaseEvent
 
 sealed class AddTaskEvent : BaseEvent {
     data class OnBack(
         val navigateBack: () -> Unit,
     ) : AddTaskEvent()
+
     data object OnConfirmDatePickerDialog : AddTaskEvent()
     data object OnDismissDatePickerDialog : AddTaskEvent()
+    data object OnShowDatePickerDialog : AddTaskEvent()
     data object OnConfirmTimePickerDialog : AddTaskEvent()
     data object OnDismissTimePickerDialog : AddTaskEvent()
+    data object OnShowTimePickerDialog : AddTaskEvent()
     data object OnDismissDiscardTaskDialog : AddTaskEvent()
+    data object ClearDateTime : AddTaskEvent()
+
 
     data class TaskTitleValueChange(val value: String) : AddTaskEvent()
+    data class OnTagSelected(val tag: Tag) : AddTaskEvent()
+    data class OnAddTaskCheckListItem(val item: String) : AddTaskEvent()
+    data class OnDeleteTaskCheckListItem(val index: Int) : AddTaskEvent()
+    data class TaskDescriptionValueChange(val value: String) : AddTaskEvent()
 }

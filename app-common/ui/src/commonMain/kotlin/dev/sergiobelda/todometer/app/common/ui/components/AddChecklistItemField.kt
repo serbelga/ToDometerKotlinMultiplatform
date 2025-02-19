@@ -40,8 +40,8 @@ import dev.sergiobelda.todometer.common.designsystem.resources.images.icons.Chec
 
 @Composable
 fun AddChecklistItemField(
-    placeholder: @Composable (() -> Unit)? = null,
     onAddTaskCheckListItem: (String) -> Unit,
+    placeholder: @Composable (() -> Unit)? = null,
 ) {
     var taskChecklistItemText by remember { mutableStateOf("") }
     val addTaskChecklistItemAction = {

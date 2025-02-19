@@ -29,6 +29,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.mapSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import dev.sergiobelda.todometer.app.common.ui.extensions.selectedTimeMillis
 import dev.sergiobelda.todometer.common.domain.model.Tag
@@ -44,21 +47,19 @@ data class AddTaskContentState internal constructor(
 ) : BaseContentState {
     private val tags = enumValues<Tag>()
 
-    // SAVE
     var taskTitle by mutableStateOf("")
         private set
 
-    // SAVE
+    var taskTitleInputError by mutableStateOf(false)
+        private set
+
     var taskDescription by mutableStateOf("")
         private set
 
-    // SAVE
     var selectedTag by mutableStateOf(tags.firstOrNull() ?: Tag.UNSPECIFIED)
 
-    // SAVE
     var taskDueDate: Long? by mutableStateOf(null)
 
-    // SAVE
     val taskChecklistItems = mutableStateListOf<String>()
 
     var discardTaskAlertDialogVisible by mutableStateOf(false)
@@ -75,13 +76,20 @@ data class AddTaskContentState internal constructor(
 
     override fun handleEvent(event: BaseEvent) {
         when (event) {
+            is AddTaskEvent.OnBack -> checkOnBack(event)
             is AddTaskEvent.OnConfirmDatePickerDialog -> confirmDatePickerDialog()
             is AddTaskEvent.OnDismissDatePickerDialog -> dismissDatePickerDialog()
+            is AddTaskEvent.OnShowDatePickerDialog -> showDatePickerDialog()
             is AddTaskEvent.OnConfirmTimePickerDialog -> confirmTimePickerDialog()
-            is AddTaskEvent.OnDismissTimePickerDialog -> dismissDatePickerDialog()
+            is AddTaskEvent.OnDismissTimePickerDialog -> dismissTimePickerDialog()
+            is AddTaskEvent.OnShowTimePickerDialog -> showTimePickerDialog()
             is AddTaskEvent.OnDismissDiscardTaskDialog -> dismissDiscardTaskDialog()
-            is AddTaskEvent.OnBack -> checkOnBack(event)
+            is AddTaskEvent.ClearDateTime -> clearDateTime()
             is AddTaskEvent.TaskTitleValueChange -> taskTitleValueChange(event)
+            is AddTaskEvent.OnTagSelected -> selectTag(event)
+            is AddTaskEvent.OnAddTaskCheckListItem -> addTaskCheckListItem(event)
+            is AddTaskEvent.OnDeleteTaskCheckListItem -> deleteTaskCheckListItem(event)
+            is AddTaskEvent.TaskDescriptionValueChange -> taskDescriptionValueChange(event)
         }
     }
 
@@ -94,6 +102,10 @@ data class AddTaskContentState internal constructor(
         datePickerDialogVisible = false
     }
 
+    private fun showDatePickerDialog() {
+        datePickerDialogVisible = true
+    }
+
     private fun confirmTimePickerDialog() {
         timePickerDialogVisible = false
         updateTaskDueDate()
@@ -103,12 +115,20 @@ data class AddTaskContentState internal constructor(
         timePickerDialogVisible = false
     }
 
+    private fun showTimePickerDialog() {
+        timePickerDialogVisible = true
+    }
+
     private fun updateTaskDueDate() {
         taskDueDate = datePickerState.selectedDateMillis?.plus(timePickerState.selectedTimeMillis)
     }
 
     private fun dismissDiscardTaskDialog() {
         discardTaskAlertDialogVisible = false
+    }
+
+    private fun clearDateTime() {
+        taskDueDate = null
     }
 
     private fun checkOnBack(event: AddTaskEvent.OnBack) {
@@ -121,12 +141,64 @@ data class AddTaskContentState internal constructor(
 
     private fun initialValuesUpdated(): Boolean =
         taskTitle.isNotBlank() ||
-            taskDueDate != null ||
-            taskDescription.isNotBlank() ||
-            taskChecklistItems.isNotEmpty()
+                taskDueDate != null ||
+                taskDescription.isNotBlank() ||
+                taskChecklistItems.isNotEmpty()
 
     private fun taskTitleValueChange(event: AddTaskEvent.TaskTitleValueChange) {
         taskTitle = event.value
+    }
+
+    private fun selectTag(event: AddTaskEvent.OnTagSelected) {
+        selectedTag = event.tag
+    }
+
+    private fun addTaskCheckListItem(event: AddTaskEvent.OnAddTaskCheckListItem) {
+        taskChecklistItems.add(event.item)
+    }
+
+    private fun deleteTaskCheckListItem(event: AddTaskEvent.OnDeleteTaskCheckListItem) {
+        taskChecklistItems.removeAt(index = event.index)
+    }
+
+    private fun taskDescriptionValueChange(event: AddTaskEvent.TaskDescriptionValueChange) {
+        taskDescription = event.value
+    }
+
+    companion object {
+        internal fun Saver(
+            snackbarHostState: SnackbarHostState,
+            topAppBarState: TopAppBarState,
+            datePickerState: DatePickerState,
+            timePickerState: TimePickerState,
+        ): Saver<AddTaskContentState, *> = mapSaver(
+            save = {
+                mapOf(
+                    TaskTitleKey to it.taskTitle,
+                    TaskDescriptionKey to it.taskDescription,
+                    SelectedTagKey to it.selectedTag,
+                    TaskDueDateKey to it.taskDueDate,
+                )
+            },
+            restore = { map ->
+                AddTaskContentState(
+                    snackbarHostState = snackbarHostState,
+                    topAppBarState = topAppBarState,
+                    datePickerState = datePickerState,
+                    timePickerState = timePickerState
+                ).apply {
+                    taskTitle = map[TaskTitleKey] as String
+                    taskDescription = map[TaskDescriptionKey] as String
+                    selectedTag = map[SelectedTagKey] as Tag
+                    taskDueDate = map[TaskDueDateKey] as? Long
+                }
+            }
+        )
+
+        private const val TaskTitleKey: String = "task_title"
+        private const val TaskDescriptionKey: String = "task_description"
+        private const val SelectedTagKey: String = "selected_tag"
+        private const val TaskDueDateKey: String = "task_due_date"
     }
 }
 
@@ -137,7 +209,14 @@ fun rememberAddTaskContentState(
     topAppBarState: TopAppBarState = rememberTopAppBarState(),
     datePickerState: DatePickerState = rememberDatePickerState(),
     timePickerState: TimePickerState = rememberTimePickerState(),
-): AddTaskContentState = remember {
+): AddTaskContentState = rememberSaveable(
+    saver = AddTaskContentState.Saver(
+        snackbarHostState = snackbarHostState,
+        topAppBarState = topAppBarState,
+        datePickerState = datePickerState,
+        timePickerState = timePickerState,
+    )
+) {
     AddTaskContentState(
         snackbarHostState = snackbarHostState,
         topAppBarState = topAppBarState,
