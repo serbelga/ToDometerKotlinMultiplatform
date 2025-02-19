@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DatePicker
@@ -114,21 +115,14 @@ data object AddTaskScreen : BaseUI<AddTaskUIState, AddTaskContentState>() {
                     navigateBack = onBack,
                     isSaveButtonEnabled = !uiState.isAddingTask,
                     onSaveButtonClick = {
-                        /*
-                        if (taskTitle.isBlank()) {
-                            taskTitleInputError = true
-                        } else {
-                            viewModel.insertTask(
-                                taskTitle,
-                                selectedTag,
-                                taskDescription,
-                                taskDueDate,
-                                taskChecklistItems,
+                        onEvent(
+                            AddTaskEvent.OnSaveButtonClick(
+                                onInsertNewTask = {
+                                    onEvent(AddTaskEvent.OnInsertNewTask(it))
+                                    onEvent(AddTaskNavigationEvent.NavigateBack)
+                                }
                             )
-                            navigateBack()
-                        }
-                        */
-
+                        )
                     },
                 )
             },
@@ -190,7 +184,7 @@ data object AddTaskScreen : BaseUI<AddTaskUIState, AddTaskContentState>() {
     }
 
     @Composable
-    private fun AddTaskContent(
+    private inline fun AddTaskContent(
         showProgress: Boolean,
         taskTitle: String,
         taskTitleInputError: Boolean,
@@ -207,83 +201,125 @@ data object AddTaskScreen : BaseUI<AddTaskUIState, AddTaskContentState>() {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
             LazyColumn {
-                item {
-                    TodometerTitledTextField(
-                        title = TodometerResources.strings.name,
-                        value = taskTitle,
-                        onValueChange = { onEvent(AddTaskEvent.TaskTitleValueChange(it)) },
-                        placeholder = { Text(TodometerResources.strings.enterTaskName) },
-                        isError = taskTitleInputError,
-                        errorMessage = TodometerResources.strings.fieldNotEmpty,
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Sentences,
-                            imeAction = ImeAction.Next,
-                        ),
-                        modifier = Modifier.padding(TextFieldPadding),
-                    )
-                }
-                item {
-                    FieldTitle(text = TodometerResources.strings.chooseTag)
-                    TagSelector(
-                        onTagSelected = { onEvent(AddTaskEvent.OnTagSelected(it)) },
-                        selectedTag
-                    )
-                }
-                item {
-                    FieldTitle(text = TodometerResources.strings.dateTime.addStyledOptionalSuffix())
-                    DateTimeSelector(
-                        taskDueDate,
-                        onEnterDateTimeClick = { onEvent(AddTaskEvent.OnShowDatePickerDialog) },
-                        onDateClick = { onEvent(AddTaskEvent.OnShowDatePickerDialog) },
-                        onTimeClick = { onEvent(AddTaskEvent.OnShowTimePickerDialog) },
-                        onClearDateTimeClick = { onEvent(AddTaskEvent.ClearDateTime) },
-                    )
-                }
-                item {
-                    Text(
-                        text = TodometerResources.strings.checklist.addStyledOptionalSuffix(),
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.labelLarge,
-                        modifier = Modifier.padding(
-                            start = SectionPadding,
-                            top = 16.dp,
-                            end = SectionPadding,
-                        ),
-                    )
-                }
-                itemsIndexed(taskChecklistItems) { index, item ->
-                    TaskChecklistItem(
-                        onDeleteTaskCheckListItem = {
-                            onEvent(AddTaskEvent.OnDeleteTaskCheckListItem(index))
-                        },
-                        taskChecklistItem = item,
-                    )
-                }
-                item {
-                    AddChecklistItemField(
-                        onAddTaskCheckListItem = { onEvent(AddTaskEvent.OnAddTaskCheckListItem(it)) },
-                    ) {
-                        Text(TodometerResources.strings.addElementOptional)
-                    }
-                }
-                item {
-                    TodometerTitledTextField(
-                        title = TodometerResources.strings.description.addStyledOptionalSuffix(),
-                        value = taskDescription,
-                        onValueChange = { onEvent(AddTaskEvent.TaskDescriptionValueChange(it)) },
-                        placeholder = { Text(TodometerResources.strings.enterDescription) },
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Sentences,
-                            imeAction = ImeAction.Done,
-                        ),
-                        modifier = Modifier.padding(TextFieldPadding),
-                        maxLines = 4,
-                    )
-                }
+                taskTitleItem(
+                    taskTitle = taskTitle,
+                    taskTitleInputError = taskTitleInputError
+                )
+                tagSelectorItem(
+                    selectedTag = selectedTag
+                )
+                taskDueDateItem(
+                   taskDueDate = taskDueDate
+                )
+                taskChecklistItemsItem(
+                    taskChecklistItems = taskChecklistItems
+                )
+                taskDescriptionItem(
+                    taskDescription = taskDescription
+                )
                 item {
                     TodometerDivider()
                 }
             }
+        }
+    }
+
+    private inline fun LazyListScope.taskTitleItem(
+        taskTitle: String,
+        taskTitleInputError: Boolean,
+    ) {
+        item {
+            TodometerTitledTextField(
+                title = TodometerResources.strings.name,
+                value = taskTitle,
+                onValueChange = { onEvent(AddTaskEvent.TaskTitleValueChange(it)) },
+                placeholder = { Text(TodometerResources.strings.enterTaskName) },
+                isError = taskTitleInputError,
+                errorMessage = TodometerResources.strings.fieldNotEmpty,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Next,
+                ),
+                modifier = Modifier.padding(TextFieldPadding),
+            )
+        }
+    }
+
+    private inline fun LazyListScope.tagSelectorItem(
+        selectedTag: Tag,
+    ) {
+        item {
+            FieldTitle(text = TodometerResources.strings.chooseTag)
+            TagSelector(
+                onTagSelected = { onEvent(AddTaskEvent.OnTagSelected(it)) },
+                selectedTag
+            )
+        }
+    }
+
+    private inline fun LazyListScope.taskDueDateItem(
+        taskDueDate: Long?,
+    ) {
+        item {
+            FieldTitle(text = TodometerResources.strings.dateTime.addStyledOptionalSuffix())
+            DateTimeSelector(
+                taskDueDate,
+                onEnterDateTimeClick = { onEvent(AddTaskEvent.OnShowDatePickerDialog) },
+                onDateClick = { onEvent(AddTaskEvent.OnShowDatePickerDialog) },
+                onTimeClick = { onEvent(AddTaskEvent.OnShowTimePickerDialog) },
+                onClearDateTimeClick = { onEvent(AddTaskEvent.ClearDateTime) },
+            )
+        }
+    }
+
+    private inline fun LazyListScope.taskChecklistItemsItem(
+        taskChecklistItems: ImmutableList<String>,
+    ) {
+        item {
+            Text(
+                text = TodometerResources.strings.checklist.addStyledOptionalSuffix(),
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(
+                    start = SectionPadding,
+                    top = 16.dp,
+                    end = SectionPadding,
+                ),
+            )
+        }
+        itemsIndexed(taskChecklistItems) { index, item ->
+            TaskChecklistItem(
+                onDeleteTaskCheckListItem = {
+                    onEvent(AddTaskEvent.OnDeleteTaskCheckListItem(index))
+                },
+                taskChecklistItem = item,
+            )
+        }
+        item {
+            AddChecklistItemField(
+                onAddTaskCheckListItem = { onEvent(AddTaskEvent.OnAddTaskCheckListItem(it)) },
+            ) {
+                Text(TodometerResources.strings.addElementOptional)
+            }
+        }
+    }
+
+    private inline fun LazyListScope.taskDescriptionItem(
+        taskDescription: String,
+    ) {
+        item {
+            TodometerTitledTextField(
+                title = TodometerResources.strings.description.addStyledOptionalSuffix(),
+                value = taskDescription,
+                onValueChange = { onEvent(AddTaskEvent.TaskDescriptionValueChange(it)) },
+                placeholder = { Text(TodometerResources.strings.enterDescription) },
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done,
+                ),
+                modifier = Modifier.padding(TextFieldPadding),
+                maxLines = 4,
+            )
         }
     }
 }

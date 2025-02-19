@@ -16,44 +16,50 @@
 
 package dev.sergiobelda.todometer.app.feature.addtask.ui
 
+import androidx.lifecycle.viewModelScope
+import dev.sergiobelda.todometer.common.domain.doIfError
+import dev.sergiobelda.todometer.common.domain.doIfSuccess
+import dev.sergiobelda.todometer.common.domain.model.NewTask
 import dev.sergiobelda.todometer.common.domain.usecase.task.InsertTaskInTaskListSelectedUseCase
 import dev.sergiobelda.todometer.common.ui.base.BaseEvent
 import dev.sergiobelda.todometer.common.ui.base.BaseViewModel
+import dev.sergiobelda.todometer.common.ui.error.mapToErrorUi
+import kotlinx.coroutines.launch
 
 class AddTaskViewModel(
     private val insertTaskInTaskListSelectedUseCase: InsertTaskInTaskListSelectedUseCase,
 ) : BaseViewModel<AddTaskUIState>(
     initialUIState = AddTaskUIState(),
 ) {
+    override fun handleEvent(event: BaseEvent) {
+        when (event) {
+            is AddTaskEvent.OnInsertNewTask -> insertTask(event.newTask)
+        }
+    }
 
-    /*fun insertTask(
-        title: String,
-        tag: Tag,
-        description: String? = null,
-        dueDate: Long? = null,
-        taskChecklistItems: List<String> = emptyList(),
+    private fun insertTask(
+        newTask: NewTask
     ) = viewModelScope.launch {
-        state = state.copy(isAddingTask = true)
+        updateUIState {
+            it.copy(isAddingTask = true)
+        }
         val result = insertTaskInTaskListSelectedUseCase.invoke(
-            title,
-            tag,
-            description,
-            dueDate,
-            taskChecklistItems,
+            newTask
         )
         result.doIfSuccess {
-            state = state.copy(
-                isAddingTask = false,
-                errorUi = null,
-            )
+            updateUIState {
+                it.copy(
+                    isAddingTask = false,
+                    errorUi = null,
+                )
+            }
         }.doIfError { error ->
-            state = state.copy(
-                isAddingTask = false,
-                errorUi = error.mapToErrorUi(),
-            )
+            updateUIState {
+                it.copy(
+                    isAddingTask = false,
+                    errorUi = error.mapToErrorUi(),
+                )
+            }
         }
-    }*/
-
-    override fun handleEvent(event: BaseEvent) {
     }
 }

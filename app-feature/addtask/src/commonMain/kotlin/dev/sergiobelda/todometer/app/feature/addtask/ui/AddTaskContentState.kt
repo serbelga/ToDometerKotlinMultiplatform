@@ -34,6 +34,7 @@ import androidx.compose.runtime.saveable.mapSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import dev.sergiobelda.todometer.app.common.ui.extensions.selectedTimeMillis
+import dev.sergiobelda.todometer.common.domain.model.NewTask
 import dev.sergiobelda.todometer.common.domain.model.Tag
 import dev.sergiobelda.todometer.common.ui.base.BaseContentState
 import dev.sergiobelda.todometer.common.ui.base.BaseEvent
@@ -90,6 +91,7 @@ data class AddTaskContentState internal constructor(
             is AddTaskEvent.OnAddTaskCheckListItem -> addTaskCheckListItem(event)
             is AddTaskEvent.OnDeleteTaskCheckListItem -> deleteTaskCheckListItem(event)
             is AddTaskEvent.TaskDescriptionValueChange -> taskDescriptionValueChange(event)
+            is AddTaskEvent.OnSaveButtonClick -> onSaveButtonClick(event)
         }
     }
 
@@ -163,6 +165,23 @@ data class AddTaskContentState internal constructor(
 
     private fun taskDescriptionValueChange(event: AddTaskEvent.TaskDescriptionValueChange) {
         taskDescription = event.value
+    }
+
+    private fun onSaveButtonClick(event: AddTaskEvent.OnSaveButtonClick) {
+        taskTitleInputError = false
+        if (taskTitle.isBlank()) {
+            taskTitleInputError = true
+        } else {
+            event.onInsertNewTask(
+                NewTask(
+                    title = taskTitle,
+                    tag = selectedTag,
+                    description = taskDescription,
+                    dueDate = taskDueDate,
+                    taskChecklistItems = taskChecklistItems,
+                )
+            )
+        }
     }
 
     companion object {

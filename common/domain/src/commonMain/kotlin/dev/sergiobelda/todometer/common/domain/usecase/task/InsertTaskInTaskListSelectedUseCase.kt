@@ -18,7 +18,7 @@ package dev.sergiobelda.todometer.common.domain.usecase.task
 
 import dev.sergiobelda.todometer.common.domain.Result
 import dev.sergiobelda.todometer.common.domain.doIfSuccess
-import dev.sergiobelda.todometer.common.domain.model.Tag
+import dev.sergiobelda.todometer.common.domain.model.NewTask
 import dev.sergiobelda.todometer.common.domain.model.Task
 import dev.sergiobelda.todometer.common.domain.repository.ITaskChecklistItemsRepository
 import dev.sergiobelda.todometer.common.domain.repository.ITaskRepository
@@ -32,28 +32,23 @@ class InsertTaskInTaskListSelectedUseCase(
 ) {
 
     /**
-     * Creates a new [Task] given a [title], [description] and [tag], in the
-     * current task list selected.
+     * Creates a new [Task] given a [newTask].
      */
     suspend operator fun invoke(
-        title: String,
-        tag: Tag = Tag.GRAY,
-        description: String? = null,
-        dueDate: Long? = null,
-        taskChecklistItems: List<String> = emptyList(),
+        newTask: NewTask
     ): Result<String> {
         val taskListId = userPreferencesRepository.taskListSelected().firstOrNull() ?: ""
         val result = taskRepository.insertTask(
-            title,
-            tag,
-            description,
-            dueDate,
+            newTask.title,
+            newTask.tag,
+            newTask.description,
+            newTask.dueDate,
             taskListId,
         )
         result.doIfSuccess { taskId ->
             taskChecklistItemsRepository.insertTaskChecklistItems(
                 taskId,
-                items = taskChecklistItems.toTypedArray(),
+                items = newTask.taskChecklistItems.toTypedArray(),
             )
         }
         return result
